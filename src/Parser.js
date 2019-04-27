@@ -1,8 +1,10 @@
-// const utils = require('./utils')
 const fs = require('fs')
 const { ERROR_TYPE, ROMAN_MAP } = require('./helpers/Constant')
 const { readFile } = require('./helpers/utils')
 
+/**
+ * 程序主引擎
+ */
 class Parser {
     constructor (symbolConverter) {
         this.wordMap = {}
@@ -11,12 +13,20 @@ class Parser {
         this.symbolConverter = symbolConverter
     }
 
+    /**
+     * 计算代号的数值 
+     * @param {string} line 
+     */
     answerNumber (line) {
         const behindIs = line.split(' is ')[1].replace(' ?', '')
         const number = this.symbolConverter.convert(behindIs.split(' '))
         return `${behindIs} is ${number}`
     }
 
+    /**
+     * 计算一定数量金属的换算值
+     * @param {string} line 
+     */
     answerCredits (line) {
         const behindIs = line.split(' is ')[1].replace(' ?', '')
         const behindIsArr = behindIs.split(' ')
@@ -25,6 +35,10 @@ class Parser {
         return `${behindIs} is ${number * this.metalMap[metal]} Credits`
     }
 
+    /**
+     * 解析行中金属的单价
+     * @param {string} line 
+     */
     caculateMetal (line) {
         const [frontIs, behindIs] = line.split(' is ')
         const creditCount = parseInt(behindIs.split(' ')[0])
@@ -34,11 +48,18 @@ class Parser {
         return this.metalMap
     }
 
+    /**
+     * 解析 symbol 和 roman 字符的对应关系
+     * @param {string} line 
+     */
     parseSymbol (line) {
         const words = line.split(' ')
         return {[words[0]]: words.pop()}
     }
-
+    /**
+     * 回答问句
+     * @param {string} line 
+     */
     answerQuestion (line) {
         if(/^how much is/.test(line)) {
             return this.answerNumber(line)
@@ -49,6 +70,10 @@ class Parser {
         }
     }
 
+    /**
+     * 解析每一行的语句
+     * @param {string} line 
+     */
     parseLine (line) {
         try {
             if(/.Credits$/.test(line)) {

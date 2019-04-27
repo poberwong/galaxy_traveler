@@ -1,4 +1,8 @@
 const { ERROR_TYPE } = require('./helpers/Constant')
+
+/**
+ * 罗马字符代号数组的转换器
+ */
 class SymbolConverter {
     constructor (romanMap, romanOrder) {
         this.romanMap = romanMap
