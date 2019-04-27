@@ -8,5 +8,5 @@ const parser = new Parser(symbolConverter)
 
 commander.option('-i, --inputFile [type]', 'file path').parse(process.argv)
 
-const path = (commander.inputFile && commander.inputFile === String) ? commander.inputFile : 'src/data.txt'
+const path = (commander.inputFile && commander.inputFile === string) ? commander.inputFile : 'src/data.txt'
 parser.run(path)
