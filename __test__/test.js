@@ -42,7 +42,7 @@ describe('parser', () => {
     })
 
     test('answerCredit', () => {
-      expect(parser.answerCredits('how many Credits is glob prok Gold ?')).toEqual('glob prok Gold is 57800 Credits')
+      expect(parser.answerExchange('how many Credits is glob prok Gold ?')).toEqual('glob prok Gold is 57800 Credits')
     })
 })
   

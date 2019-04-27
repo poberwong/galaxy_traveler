@@ -27,7 +27,7 @@ class Parser {
      * 计算一定数量金属的换算值
      * @param {string} line 
      */
-    answerCredits (line) {
+    answerExchange (line) {
         const behindIs = line.split(' is ')[1].replace(' ?', '')
         const behindIsArr = behindIs.split(' ')
         const metal = behindIsArr[behindIsArr.length - 1]
@@ -64,7 +64,7 @@ class Parser {
         if(/^how much is/.test(line)) {
             return this.answerNumber(line)
         } else if (/^how many/.test(line)){
-            return this.answerCredits(line)
+            return this.answerExchange(line)
         } else {
             throw new Error(ERROR_TYPE.ERROR_QUESTION)
         }
