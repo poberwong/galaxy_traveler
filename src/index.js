@@ -2,7 +2,6 @@ const fs = require('fs')
 
 const ROMAN_MAP = {I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000, CM: 900, CD: 400, XC: 90, XL: 40, IX: 9, IV: 4}
 const ROMAN_ORDER = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I']
-
 const ERROR_TYPE = {
     ERROR_QUESTION: 'bad question',
     INVALID_SYMBOLS: 'symbols can\'t convert into arabic',
@@ -10,112 +9,148 @@ const ERROR_TYPE = {
     UNKNOWN_INPUT: 'input can\'t be parsed'
 }
 
-let wordMap = {}, metalMap = {}
-
-/**
- * 
- * @param {string} romans 
- */
-function romansToArabic (romans) {
-    if(!/^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/.test(romans)) {
-        throw new Error(ERROR_TYPE.INVALID_ROMAN)
-    }
-    let res = 0
-    ROMAN_ORDER.forEach(key => {
-        while(romans.startsWith(key)) {
-            romans = romans.replace(key, '')
-            res += ROMAN_MAP[key]
-        }
+function readFile (path) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(path, (err, data) => {
+            if(err) {
+                reject(err)
+            } else {
+                resolve(data.toString())
+            }
+        })
     })
-    return res
 }
 
-/**
- * 
- * @param {array} symbols 
- */
-function symbolsToRoman (symbols) {
-    return symbols.map(word => {
-        const roman = wordMap[word]
-        if(roman) {
-            return roman
+class SymbolConverter {
+    constructor (romanMap, romanOrder) {
+        this.romanMap = romanMap
+        this.romanOrder = romanOrder
+        this.symbolMap = {}
+    }
+
+    isValid (romanStr) {
+        return /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/.test(romanStr)
+    }
+
+    /**
+     * For example: convert XCI into 90
+     * @param {string} romanStr
+     */
+    romansToArabic (romanStr) {
+        if(!this.isValid(romanStr)) {
+            throw new Error(ERROR_TYPE.INVALID_ROMAN)
+        }
+        let res = 0
+        this.romanOrder.forEach(key => {
+            while(romanStr.startsWith(key)) {
+                romanStr = romanStr.replace(key, '')
+                res += this.romanMap[key]
+            }
+        })
+        return res
+    }
+
+    /**
+     * 根据 symbolMap 中的映射关系将 symbols 转换为罗马字符串
+     * @param {array} symbols 
+     */
+    symbolsToRoman (symbols) {
+        return symbols.map(word => {
+            const roman = this.symbolMap[word]
+            if(roman) {
+                return roman
+            } else {
+                throw new Error(ERROR_TYPE.INVALID_SYMBOLS)
+            }
+        }).join('')
+    }
+
+    setSymbolMap (obj) {
+        this.symbolMap = {...this.symbolMap, ...obj}
+    }
+
+    convert (symbols) {
+        return this.romansToArabic(this.symbolsToRoman(symbols))
+    }
+}
+
+class Parser {
+    constructor (symbolConverter) {
+        this.wordMap = {}
+        this.metalMap = {}
+        this.output = ''
+        this.symbolConverter = symbolConverter
+    }
+
+    answerNumber (line) {
+        const behindIs = line.split(' is ')[1].replace(' ?', '')
+        const number = this.symbolConverter.convert(behindIs.split(' '))
+        return `${behindIs} is ${number}`
+    }
+
+    answerCredits (line) {
+        const behindIs = line.split(' is ')[1].replace(' ?', '')
+        const behindIsArr = behindIs.split(' ')
+        const metal = behindIsArr[behindIsArr.length - 1]
+        const number = this.symbolConverter.convert(behindIsArr.slice(0, -1))
+        return `${behindIs} is ${number * this.metalMap[metal]} Credits`
+    }
+
+    caculateMetal (line) {
+        const [frontIs, behindIs] = line.split(' is ')
+        const creditCount = parseInt(behindIs.split(' ')[0])
+        const metal = frontIs.split(' ').pop()
+        const symbols = frontIs.split(' ').slice(0, -1)
+        this.metalMap[metal] = creditCount / this.symbolConverter.convert(symbols)
+        return this.metalMap
+    }
+
+    parseSymbol (line) {
+        const words = line.split(' ')
+        return {[words[0]]: words.pop()}
+    }
+
+    answerQuestion (line) {
+        if(/^how much is/.test(line)) {
+            return this.answerNumber(line)
+        } else if (/^how many/.test(line)){
+            return this.answerCredits(line)
         } else {
-            throw new Error(ERROR_TYPE.INVALID_SYMBOLS)
+            throw new Error(ERROR_TYPE.ERROR_QUESTION)
         }
-    }).join('')
-}
-
-function symbolsToArabic (symbols) {
-    return romansToArabic(symbolsToRoman(symbols))
-}
-
-function parseWord (line) {
-    const words = line.split(' ')
-    wordMap[words[0]] = words.pop()
-    return wordMap
-}
-
-function caculateMetal (line) {
-    const [frontIs, behindIs] = line.split(' is ')
-    const creditCount = parseInt(behindIs.split(' ')[0])
-    const metal = frontIs.split(' ').pop()
-    const symbols = frontIs.split(' ').slice(0, -1)
-    metalMap[metal] = creditCount / symbolsToArabic(symbols)
-    return metalMap
-}
-
-/**
- * how much is xxx ?
- * @param line 
- */
-function answerNumber (line) {
-    const behindIs = line.split(' is ')[1].replace(' ?', '')
-    const number = symbolsToArabic(behindIs.split(' '))
-    console.log(`${behindIs} is ${number}`)
-}
-
-/**
- * how many Credits is xxx ?
- * @param line 
- */
-function answerCredits (line) {
-    const behindIs = line.split(' is ')[1].replace(' ?', '')
-    const behindIsArr = behindIs.split(' ')
-    const metal = behindIsArr[behindIsArr.length - 1]
-    const number = symbolsToArabic(behindIsArr.slice(0, -1))
-    console.log(`${behindIs} is ${number * metalMap[metal]} Credits`)
-}
-
-function answerQuestion (line) {
-    if(/^how much/.test(line)) {
-        answerNumber(line)
-    } else if (/^how many/.test(line)){
-        answerCredits(line)
-    } else {
-        throw new Error(ERROR_TYPE.ERROR_QUESTION)
     }
-}
 
-function parseLine (line) {
-    if(/.Credits$/.test(line)) {
-        caculateMetal(line)
-    } else if (/\?$/.test(line)) {
-        answerQuestion(line)
-    } else if (ROMAN_MAP[line[line.length - 1]] !== undefined) {
-        parseWord(line)
-    } else {
-        throw new Error(ERROR_TYPE.UNKNOWN_INPUT)
-    }
-}
-
-fs.readFile('src/data.txt', (err, data) => {
-    if(err) {
-        console.log('err: ', err)
-    } else {
+    parseLine (line) {
         try {
-            data.toString().split('\n').forEach(parseLine)
-        } catch (err) {
-            console.log('I have no idea what you are talking about')
+            if(/.Credits$/.test(line)) {
+                this.caculateMetal(line)
+            } else if (/\?$/.test(line)) {
+                this.output += this.answerQuestion(line) + '\n'
+            } else if (ROMAN_MAP[line[line.length - 1]] !== undefined) {
+                this.symbolConverter.setSymbolMap(this.parseSymbol(line))
+            } else {
+                throw new Error (ERROR_TYPE.UNKNOWN_INPUT)
+            }
+        } catch {
+            this.output += 'I have no idea what you are talking about\n'
         }
     }
-})
+
+    run (path) {
+        readFile(path)
+            .then(res => {
+                res.split('\n').forEach(this.parseLine.bind(this))
+            })
+            .catch(err => {
+                console.log(err)
+            })
+            .finally(() => {
+                this.output = this.output.replace(/\n$/, '')
+                console.log(this.output)
+            })
+    }
+}
+
+const symbolConverter = new SymbolConverter(ROMAN_MAP, ROMAN_ORDER)
+const parser = new Parser(symbolConverter)
+parser.run('src/data.txt')
